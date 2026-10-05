@@ -1,6 +1,13 @@
 .QuestionListItemRoot {
   .QuestionListItem {
     flex: 1;
+
+    @media (hover: hover) {
+      &:hover :global(.Icon-verified) {
+        /* The moderation icon sets its color inline. */
+        color: var(--mb-color-text-primary-inverse) !important;
+      }
+    }
   }
 
   &:hover {
