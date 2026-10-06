@@ -639,3 +639,19 @@
         (mt/user-http-request :crowberto :put 200 "apps/shop" {:bundle "B2"})
         (is (= :success (:status (export! mock))))
         (is (= "greeting: hello\n" (get-in @(:files-atom mock) ["main" own])))))))
+
+(deftest pull-recovers-after-a-pull-that-failed-part-way-test
+  (testing "a pull that loaded an app's collection and then failed doesn't stop the corrected commit from loading"
+    (with-data-apps-sync
+      (let [good (shop-tree (question-resources))
+            src  (test-helpers/versioned-source
+                  :trees {"v0" (dissoc good "data_apps/shop/index.js") ; the manifest names a bundle the commit lacks
+                          "v1" good}
+                  :current "v0")]
+        (is (= :error (:status (import-at! src "v0" :force? true))))
+        (testing "the collection the failed pull created is gone, since no app owns it"
+          (is (not (t2/exists? :model/Collection :entity_id shop-collection-eid))))
+        (let [result (import-at! src "v1" :force? true)]
+          (is (= :success (:status result)) (:message result)))
+        (is (=? {:resource_collection_id pos-int?} (t2/select-one :model/DataApp :name "shop")))
+        (is (t2/exists? :model/Card :entity_id question-eid :collection_id (shop-collection-id)))))))

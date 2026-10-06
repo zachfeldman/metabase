@@ -24,6 +24,18 @@
   []
   (data-apps.db/resource-collection-ids))
 
+(defn collection-entity-ids-present
+  "Those of `entity-ids` that a collection on this instance carries."
+  [entity-ids]
+  (data-apps.db/collection-entity-ids-present entity-ids))
+
+(defn delete-unowned-collections!
+  "Delete the collections with `entity-ids` that no data app owns. Each entity loads in its own transaction, so a
+  load that fails after creating an app's collection and before the app leaves that collection behind, where it
+  would make every later pull refuse the app as naming someone else's collection."
+  [entity-ids]
+  (data-apps.db/delete-unowned-collections! entity-ids))
+
 (defn unarchived-resource-collection-ids
   "The IDs of every data app's resource collection that isn't archived: the roots an export starts from."
   []

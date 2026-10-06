@@ -1,5 +1,6 @@
 (ns metabase-enterprise.remote-sync.impl
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [diehard.core :as dh]
    [java-time.api :as t]
@@ -573,7 +574,13 @@
   [^SourceSnapshot snapshot task-id & {:keys [force? force-deletion? merge? base-snapshot]}]
   (log/info "Reloading remote entities from the remote source")
   (analytics/inc! :metabase-remote-sync/imports)
-  (let [sync-timestamp (t/instant)]
+  (let [sync-timestamp  (t/instant)
+        ;; the collections the data app manifests name that aren't here yet: a load that fails after creating one,
+        ;; before its app, must not leave it behind, or every later pull refuses the app
+        new-collections (try
+                          (let [named (source.ingestable/data-app-collection-entity-ids snapshot)]
+                            (set/difference named (data-apps/collection-entity-ids-present named)))
+                          (catch Exception _ #{}))]
     (try
       (let [snapshot-version      (source.p/version snapshot)
             ;; Before anything is read for loading: an app's resource files are confined to its own collection.
@@ -700,6 +707,10 @@
           (do
             (log/errorf "Failed to reload from git repository: %s" (ex-message e))
             (analytics/inc! :metabase-remote-sync/imports-failed)
+            (try
+              (data-apps/delete-unowned-collections! new-collections)
+              (catch Exception cleanup-error
+                (log/warn cleanup-error "Could not remove the data app collections a failed import created")))
             {:status  :error
              :message (source-error-message e)
              :version (source.p/version snapshot)

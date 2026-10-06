@@ -241,6 +241,21 @@
   [collection-id]
   (t2/delete! :model/Collection :id collection-id))
 
+(defn collection-entity-ids-present
+  "Those of `entity-ids` that a Collection carries."
+  [entity-ids]
+  (if (seq entity-ids)
+    (t2/select-fn-set :entity_id :model/Collection :entity_id [:in entity-ids])
+    #{}))
+
+(defn delete-unowned-collections!
+  "Delete the collections with `entity-ids` that no data app owns, with what they hold."
+  [entity-ids]
+  (when (seq entity-ids)
+    (doseq [{:keys [id]} (t2/select [:model/Collection :id] :entity_id [:in entity-ids])
+            :when (not (t2/exists? :model/DataApp :resource_collection_id id))]
+      (delete-resource-collection! id))))
+
 (defn non-router-database-ids
   "The IDs of databases that are not routed through another database."
   []

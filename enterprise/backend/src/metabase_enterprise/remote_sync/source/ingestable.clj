@@ -32,6 +32,18 @@
   [file-content]
   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key})))
 
+(defn data-app-collection-entity-ids
+  "The entity IDs of the collections the data app manifests in `snapshot` name."
+  [snapshot]
+  (into #{}
+        (for [path  (source.p/list-files snapshot)
+              :when (re-matches #"data_apps/[^/]+/data_app\.yaml" path)
+              :let  [collection (try
+                                  (:collection (ingest-content (source.p/read-file snapshot path)))
+                                  (catch Exception _ nil))]
+              :when collection]
+          collection)))
+
 (defn check-data-app-files!
   "Throws, naming each file, when a data app entity file in `snapshot` (a manifest, or a file in an app's
   `resources/`) holds what a load can't take as the author meant it. Serialization trusts what it reads, so this is
