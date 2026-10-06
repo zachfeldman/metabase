@@ -3,7 +3,6 @@ import {
   DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
-import type { DataApp } from "metabase-types/api";
 
 import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
@@ -61,21 +60,11 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("shows unpublished app error when opening an app without a resource collection", () => {
-      const slug = "good";
+      // The fixture's manifest names no collection, so the pull leaves the app unpublished.
+      // (An app's collection can't be trashed once it has one.)
+      const slug = "second-app";
 
       H.pullExampleDataApps();
-      cy.request<DataApp>(`/api/apps/${slug}`)
-        .its("body.resource_collection_id")
-        .as("resourceCollectionId");
-
-      cy.log("archive and delete the data app collection");
-      cy.get<number>("@resourceCollectionId").then((collectionId) => {
-        cy.request("PUT", `/api/collection/${collectionId}`, {
-          archived: true,
-        });
-
-        cy.request("DELETE", `/api/collection/${collectionId}`);
-      });
 
       cy.log("fetching bundle should return 409 error");
       cy.request({
