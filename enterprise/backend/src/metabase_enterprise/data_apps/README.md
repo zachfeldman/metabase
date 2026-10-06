@@ -73,13 +73,26 @@ Three things make those files an app's rather than any collection's:
   that the instance lacks. `resource_validation.clj` runs on the whole snapshot before any import
   (`check-data-app-files!` in `remote-sync.source.ingestable`): a resource file may define only the
   collection its manifest names (a plain root one) and, in it, questions, metrics, and query actions
-  that belong to no model, none public, embedded, or archived; may reference nothing else of Metabase's but existing
-  databases, tables, fields, snippets, segments, and measures; and may not name an entity ID that
-  belongs to a collection, card, or action elsewhere. A problem fails the pull naming the file, as
-  any other bad entity file does.
+  that belong to no model, none public, embedded, or archived; may reference nothing else of Metabase's
+  but databases, tables, fields, snippets, segments, and measures that exist or that the same pull
+  brings, and never by numeric ID; and may not name an entity ID that belongs to a collection, card,
+  or action elsewhere, nor one that another app in the pull defines. Only the layout holds entity
+  files (`collection.yaml`, `cards/*.yaml`, `actions/*.yaml`); other YAML under `resources/` is the
+  app's own and left alone. A problem fails the pull naming the file, as any other bad entity file
+  does. The check runs before a pull that loads something and before an export that merges remote
+  changes; a pull of the commit already imported skips it. A pull that fails after creating an
+  app's collection and before the app removes that collection again, so the corrected commit loads.
 
-After every import, `resource_tables.clj` records on each app the tables its resources read,
-including those a query action's SQL names, for the permission warnings an admin sees.
+The same rules hold on the instance, since the next export writes what the collection holds: an
+app's collection takes only questions, metrics, and actions (`check-allowed-content`), a card in it
+stays a question or metric that is not archived, public, or embedded, and the collection can't be
+moved to the trash. An edit to a resource is tracked like an edit in a remote-synced collection, so
+the export keeps its file and a read-only instance refuses it.
+
+After every import, and after an export that merges, `resource_tables.clj` records on each app the
+tables its resources read, including those a query action's SQL names, for the permission warnings
+an admin sees. A query whose tables can't be read, such as a native query on a driver that can't
+parse one, is logged and skipped rather than failing the pull.
 
 Remote sync treats data apps like any other entity, globally rather than per collection. Because
 the bundle is a separate file, a pull that changes only a bundle, or an export that touches an app,
