@@ -192,6 +192,13 @@
 (defmethod serdes/load-one! "DataApp"
   [ingested maybe-local]
   (let [local    (or maybe-local (data-apps.db/draft-by-slug (:slug ingested)))
+        _        (when-not local
+                   ;; an app made on the instance keeps its slug: the unique index would refuse the insert anyway,
+                   ;; but with an error that doesn't say what to do
+                   (when (data-apps.db/data-app-by-slug (:slug ingested))
+                     (throw (ex-info (tru "A data app named \"{0}\" already exists on this instance and is not a draft. Delete it, or give the app in the repository another slug."
+                                          (:slug ingested))
+                                     {:status-code 400}))))
         app      (serdes/default-load-one! ingested local)
         previous (:resource_collection_id local)]
     (data-apps.db/update-data-app! (:id app) {:draft false})
